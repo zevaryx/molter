@@ -12,8 +12,8 @@ import attrs
 from dis_snek.client.const import MISSING
 from dis_snek.client.utils.input_utils import _quotes
 from dis_snek.client.utils.attr_utils import define, field, docs
-from dis_snek.models.snek.command import MessageCommand
-from dis_snek.models.snek.context import MessageContext
+from dis_snek.models.snek.command import PrefixedCommand
+from dis_snek.models.snek.context import PrefixedContext
 
 from molter.errors import BadArgument
 from molter.converters import Converter, LiteralConverter, Greedy, SNEK_OBJECT_TO_CONVERTER
@@ -45,7 +45,7 @@ class CommandParameter:
     name: str = attrs.field(default=None)
     default: Optional[Any] = attrs.field(default=None)
     type: type = attrs.field(default=None)
-    converters: list[Callable[[MessageContext, str], Any]] = attrs.field(factory=list)
+    converters: list[Callable[[PrefixedContext, str], Any]] = attrs.field(factory=list)
     greedy: bool = attrs.field(default=False)
     union: bool = attrs.field(default=False)
     variable: bool = attrs.field(default=False)
@@ -150,7 +150,7 @@ def _get_from_anno_type(anno: Annotated, name: str) -> Any:
     return args[0]
 
 
-def _get_converter_function(anno: type[Converter] | Converter, name: str) -> Callable[[MessageContext, str], Any]:
+def _get_converter_function(anno: type[Converter] | Converter, name: str) -> Callable[[PrefixedContext, str], Any]:
     num_params = len(inspect.signature(anno.convert).parameters.values())
 
     # if we have three parameters for the function, it's likely it has a self parameter
@@ -167,7 +167,7 @@ def _get_converter_function(anno: type[Converter] | Converter, name: str) -> Cal
     return actual_anno.convert
 
 
-def _get_converter(anno: type, name: str, type_to_converter: dict[type, type[Converter]]) -> Callable[[MessageContext, str], Any]:  # type: ignore
+def _get_converter(anno: type, name: str, type_to_converter: dict[type, type[Converter]]) -> Callable[[PrefixedContext, str], Any]:  # type: ignore
     if typing.get_origin(anno) == Annotated:
         anno = _get_from_anno_type(anno, name)
 
@@ -281,7 +281,7 @@ async def maybe_coroutine(func: Callable, *args, **kwargs) -> Any:
         return func(*args, **kwargs)
 
 
-async def _convert(param: CommandParameter, ctx: MessageContext, arg: str) -> tuple[Any, bool]:
+async def _convert(param: CommandParameter, ctx: PrefixedContext, arg: str) -> tuple[Any, bool]:
     converted = MISSING
     for converter in param.converters:
         try:
@@ -308,7 +308,7 @@ async def _convert(param: CommandParameter, ctx: MessageContext, arg: str) -> tu
 
 
 async def _greedy_convert(
-    param: CommandParameter, ctx: MessageContext, args: ArgsIterator
+    param: CommandParameter, ctx: PrefixedContext, args: ArgsIterator
 ) -> tuple[list[Any] | Any, bool]:
     args.back()
     broke_off = False
@@ -336,7 +336,7 @@ async def _greedy_convert(
 
 
 @define()
-class MolterCommand(MessageCommand):
+class MolterCommand(PrefixedCommand):
     parameters: list[CommandParameter] = field(metadata=docs("The paramters of the command."), factory=list)
     aliases: list[str] = field(
         metadata=docs(
@@ -637,13 +637,13 @@ class MolterCommand(MessageCommand):
 
         return wrapper
 
-    async def call_callback(self, callback: Callable, ctx: MessageContext) -> None:
+    async def call_callback(self, callback: Callable, ctx: PrefixedContext) -> None:
         """
         Runs the callback of this command.
 
         Args:
             callback (`Callable`): The callback to run. This is provided for compatibility with dis_snek.
-            ctx (`dis_snek.MessageContext`): The context to use for this command.
+            ctx (`dis_snek.PrefixedContext`): The context to use for this command.
         """
         # sourcery skip: remove-empty-nested-block, remove-redundant-if, remove-unnecessary-else
         if len(self.parameters) == 0:

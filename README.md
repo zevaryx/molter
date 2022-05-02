@@ -29,7 +29,7 @@ class CommandTest(dis_snek.Scale):
     @molter.msg_command()
     async def test(
         self,
-        ctx: dis_snek.MessageContext,
+        ctx: dis_snek.PrefixedContext,
         a_num: int,
         a_user: Optional[dis_snek.Member],
         a_bool: bool,

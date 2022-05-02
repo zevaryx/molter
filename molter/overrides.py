@@ -8,7 +8,7 @@ from dis_snek.client.const import logger_name, MENTION_PREFIX
 from dis_snek.api.events.discord import MessageCreate
 from dis_snek.models.snek.scale import Scale
 from dis_snek.models.snek.listener import listen
-from dis_snek.models.snek.command import MessageCommand
+from dis_snek.models.snek.command import PrefixedCommand
 from dis_snek.models.snek.application_commands import ComponentCommand, InteractionCommand
 
 from molter.command import MolterCommand
@@ -37,7 +37,7 @@ class MolterScale(Scale):
                 for scope in func.scopes:
                     if self.bot.interactions.get(scope):
                         self.bot.interactions[scope].pop(func.resolved_name, [])
-            elif isinstance(func, MessageCommand):
+            elif isinstance(func, PrefixedCommand):
                 # detect if its a molter subcommand
                 # unloading a subcommand means commands that weren't supposed to
                 # get unloaded that happen to have the same name would
@@ -63,14 +63,14 @@ class MolterSnake(Snake):
     in the class, as doing so improperly will break alias and/or subcommand support.
     """
 
-    commands: dict[str, MessageCommand | MolterCommand]
+    commands: dict[str, PrefixedCommand | MolterCommand]
     """A dictionary of registered commands: `{name: command}`"""
 
-    def add_message_command(self, command: MessageCommand | MolterCommand) -> None:
+    def add_message_command(self, command: PrefixedCommand | MolterCommand) -> None:
         """Add a message command to the client.
 
         Args:
-            command (`dis_snek.MessageCommand | MolterCommand`): The command to add.
+            command (`dis_snek.PrefixedCommand | MolterCommand`): The command to add.
         """
         if not isinstance(command, MolterCommand):
             return super().add_message_command(command)
@@ -86,7 +86,7 @@ class MolterSnake(Snake):
                 continue
             raise ValueError(f"Duplicate Command! Multiple commands share the name/alias `{alias}`")
 
-    def get_command(self, name: str) -> Optional[MessageCommand | MolterCommand]:
+    def get_command(self, name: str) -> Optional[PrefixedCommand | MolterCommand]:
         """
         Gets a command by the name specified. Can get subcommands of commmands if needed.
 
@@ -94,7 +94,7 @@ class MolterSnake(Snake):
             name (`str`): The name of the command to search for. Can be its fully qualified name.
 
         Returns:
-            `dis_snek.MessageCommand | MolterCommand`: The command object, if found.
+            `dis_snek.PrefixedCommand | MolterCommand`: The command object, if found.
         """
         if " " not in name:
             return self.commands.get(name)
